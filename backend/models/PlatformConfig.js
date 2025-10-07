@@ -1,0 +1,3 @@
+import { Schema, model, baseOpts } from './_helpers.js';
+const PlatformConfigSchema = new Schema({ fees:{ commission_pct:Number, min_fee:{ type:Number, default:0 } }, broadcast:{ enabled:{ type:Boolean, default:true } }, payments:{ providers:[String], online_min:Number }, flags:{ require_listing_review:{ type:Boolean, default:true } } }, baseOpts);
+export const PlatformConfig = model('PlatformConfig', PlatformConfigSchema);
