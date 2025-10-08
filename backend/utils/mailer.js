@@ -26,7 +26,6 @@
 // }
 
 
-import nodemailer from "nodemailer";
 import { google } from "googleapis";
 
 const CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -38,35 +37,37 @@ const USER_EMAIL = process.env.GMAIL_USER;
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET);
 oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
+const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+
 
 export async function sendMail({ to, subject, html, text }) {
   try {
-    const accessToken = await oAuth2Client.getAccessToken();
+    const rawMessage = [
+      `To: ${to}`,
+      `From: Revibe Team <${USER_EMAIL}>`,
+      `Subject: ${subject}`,
+      "Content-Type: text/html; charset=UTF-8",
+      "",
+      html || text || "",
+    ]
+      .join("\r\n")
+      .trim();
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: USER_EMAIL,
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
-        refreshToken: REFRESH_TOKEN,
-        accessToken: accessToken.token,
-      },
+    const encodedMessage = Buffer.from(rawMessage)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: { raw: encodedMessage },
     });
 
-    const info = await transporter.sendMail({
-      from: `"Revibe Team"`,
-      to,
-      subject,
-      text,
-      html,
-    });
-
-    console.log("✅ Gmail sent:", info.messageId);
-    return info;
+    console.log("✅ Gmail API sent:", res.data.id);
+    return res.data;
   } catch (err) {
-    console.error("❌ Gmail send failed:", err.message);
+    console.error("❌ Gmail API send failed:", err.message);
     throw err;
   }
 }
