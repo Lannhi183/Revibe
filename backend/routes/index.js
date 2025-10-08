@@ -9,6 +9,7 @@ import notificationRoutes from './notifications.routes.js';
 import contentRoutes from './content.routes.js';
 import reportRoutes from './reports.routes.js';
 import devRoutes from './dev.routes.js';
+import adminRoutes from './admin.routes.js';
 // import addressRoutes from './address.routes.js';
 
 const r = Router();
@@ -24,6 +25,7 @@ r.use('/notifications', notificationRoutes);
 r.use('/content', contentRoutes);
 r.use('/reports', reportRoutes);
 r.use('/addresses', addressRoutes);
+r.use('/admin', adminRoutes);
 
 if (process.env.NODE_ENV !== 'production') {
   r.use('/dev', devRoutes);
