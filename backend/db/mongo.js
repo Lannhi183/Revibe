@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 
 
 export async function connectMongo() {
+  console.log("MONGO_URI =", process.env.MONGO_URI);
 mongoose.set('strictQuery', true);
 await mongoose.connect(env.MONGO_URI, { maxPoolSize: 20 }).then(() => {
     console.log("✅ Connected to MongoDB Atlas!");
