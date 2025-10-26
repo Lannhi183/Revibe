@@ -7,6 +7,7 @@ import { createOrderFromCart } from "../services/orderService.js";
 import { createPaymentForOrder, confirmPayment,  handleWebhookEndpoint} from "../services/paymentService.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { Order } from "../models/Order.js";
+import { Listing } from "../models/Listing.js";
 import { coerceToObjectId } from "../utils/idCoerce.js";
 import { simulatePaymentWebhook } from "../services/webhookService.js";
 // Chỉ enable trong môi trường development
@@ -138,8 +139,11 @@ r.post(
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-  const uid = req.user.sub;
-  const isSeller = Array.isArray(order.seller_id) && order.seller_id.map(String).includes(String(uid));
+    const uid = req.user.sub;
+    // Check if seller_id is array or single ObjectId
+    const sellerIds = Array.isArray(order.seller_id) ? order.seller_id : [order.seller_id];
+    const isSeller = sellerIds.map(s => String(s)).includes(String(uid));
+    
     if (!isSeller) return res.status(403).json({ error: "Not authorized" });
 
     const { order_status, payment_status, shipping_status, note } = req.body;
@@ -302,6 +306,16 @@ r.post(
     }
 
     await order.save();
+
+    // Restore listings to active when order is cancelled
+    const listingIds = (order.items || []).map((it) => it.listing_id).filter(Boolean);
+    if (listingIds.length > 0) {
+      await Listing.updateMany(
+        { _id: { $in: listingIds }, status: "sold" },
+        { $set: { status: "active" } }
+      );
+    }
+
     ok(res, order);
   })
 );
@@ -337,6 +351,126 @@ r.post(
     if ((order.payment_method === "cod" || order.payment_method === "COD") && order.payment_status === "pending") {
       order.payment_status = "paid";
     }
+
+    await order.save();
+    ok(res, order);
+  })
+);
+
+// Buyer report not received (mark as canceled from delivered state)
+r.post(
+  "/:id/report-not-received",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    // only buyer may report
+    if (order.buyer_id.toString() !== req.user.sub) return res.status(403).json({ error: "Not authorized" });
+
+    // can only report if delivered
+    if (order.order_status !== "delivered") {
+      return res.status(400).json({ error: "Can only report from delivered state" });
+    }
+
+    const now = new Date();
+    order.history = order.history || [];
+    order.history.push({
+      at: now,
+      by: req.user.sub,
+      action: "buyer_report_not_received",
+      note: req.body?.note || req.body?.reason || "Buyer reported not receiving the order",
+    });
+
+    order.order_status = "canceled";
+    order.payment_status = "canceled";
+
+    await order.save();
+
+    // Restore listings to active when buyer reports not received
+    const listingIds = (order.items || []).map((it) => it.listing_id).filter(Boolean);
+    if (listingIds.length > 0) {
+      await Listing.updateMany(
+        { _id: { $in: listingIds }, status: "sold" },
+        { $set: { status: "active" } }
+      );
+    }
+
+    ok(res, order);
+  })
+);
+
+// Seller mark as shipped (processing → shipped)
+r.post(
+  "/:id/ship",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const uid = req.user.sub;
+    // Check if seller_id is array or single ObjectId
+    const sellerIds = Array.isArray(order.seller_id) ? order.seller_id : [order.seller_id];
+    const isSeller = sellerIds.map(s => String(s)).includes(String(uid));
+    
+    if (!isSeller) {
+      console.log('Authorization failed:', { uid, sellerIds: sellerIds.map(String), order_id: order._id });
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    // can only ship from processing
+    if (order.order_status !== "processing") {
+      return res.status(400).json({ error: "Can only ship from processing state", current: order.order_status });
+    }
+
+    const now = new Date();
+    order.history = order.history || [];
+    order.history.push({
+      at: now,
+      by: req.user.sub,
+      action: "seller_mark_shipped",
+      note: req.body?.note || req.body?.tracking_code || "Seller marked as shipped",
+    });
+
+    order.order_status = "shipped";
+    order.shipping_status = "in_transit";
+
+    await order.save();
+    ok(res, order);
+  })
+);
+
+// Seller mark as delivered (shipped → delivered)
+r.post(
+  "/:id/deliver",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const uid = req.user.sub;
+    // Check if seller_id is array or single ObjectId
+    const sellerIds = Array.isArray(order.seller_id) ? order.seller_id : [order.seller_id];
+    const isSeller = sellerIds.map(s => String(s)).includes(String(uid));
+    
+    if (!isSeller) return res.status(403).json({ error: "Not authorized" });
+
+    // can only deliver from shipped
+    if (order.order_status !== "shipped") {
+      return res.status(400).json({ error: "Can only deliver from shipped state", current: order.order_status });
+    }
+
+    const now = new Date();
+    order.history = order.history || [];
+    order.history.push({
+      at: now,
+      by: req.user.sub,
+      action: "seller_mark_delivered",
+      note: req.body?.note || "Seller marked as delivered",
+    });
+
+    order.order_status = "delivered";
+    order.shipping_status = "delivered";
 
     await order.save();
     ok(res, order);

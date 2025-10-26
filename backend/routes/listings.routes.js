@@ -4,15 +4,16 @@ import { validate } from "../middlewares/validate.js";
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { Listing } from "../models/Listing.js";
 import { ok, created } from "../utils/response.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, optionalAuth } from "../middlewares/auth.js";
 import mongoose from "mongoose";
 import { coerceToObjectId } from "../utils/idCoerce.js";
+import { uploadMultipleBase64ToCloudinary } from "../services/cloudinaryService.js";
 
 const r = Router();
 
 r.get(
   "/",
-  requireAuth,
+  optionalAuth,
   asyncHandler(async (req, res) => {
     const { q, category_id, sort = "-created_at", minPrice, maxPrice, isYour, status } = req.query;
 
@@ -80,12 +81,21 @@ r.post(
     const authUserIdPost = (req.user && (req.user.sub || req.user.id || req.user._id)) || null;
     const sellerRaw = authUserIdPost ?? b.sellerId;
     const sellerId = coerceToObjectId(sellerRaw) ?? sellerRaw;
+
+    // Upload images to Cloudinary if provided
+    let cloudinaryUrls = [];
+    if (b.images && b.images.length > 0) {
+      console.log(`Uploading ${b.images.length} images to Cloudinary...`);
+      cloudinaryUrls = await uploadMultipleBase64ToCloudinary(b.images, 'revibe/listings');
+      console.log(`Upload completed: ${cloudinaryUrls.length} URLs`);
+    }
+
     const doc = await Listing.create({
       seller_id: sellerId,
       title: b.title,
       price: b.price,
       currency: b.currency || "VND",
-      images: b.images,
+      images: cloudinaryUrls, // Store Cloudinary URLs instead of base64
       attributes: b.attributes,
       category_id: b.category_id,
       status: "pending_review",

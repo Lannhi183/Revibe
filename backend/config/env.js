@@ -56,4 +56,11 @@ export const env = {
   // ================================
   MAX_FILE_SIZE: Number(process.env.MAX_FILE_SIZE || 5 * 1024 * 1024), // 5MB
   UPLOAD_PATH: process.env.UPLOAD_PATH || './uploads',
+
+  // ================================
+  // CLOUDINARY CONFIGURATION
+  // ================================
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
 };

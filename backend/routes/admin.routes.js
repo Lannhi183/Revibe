@@ -4,6 +4,7 @@ import adminCategoriesRoutes from './admin.categories.routes.js';
 import adminUsersRoutes from './admin.users.routes.js';
 import adminStatsRoutes from './admin.stats.routes.js';
 import adminListingsRoutes from './admin.listings.routes.js';
+import adminOrdersRoutes from './admin.orders.routes.js';
 
 const r = Router();
 
@@ -16,6 +17,5 @@ r.use(adminCategoriesRoutes);
 r.use(adminUsersRoutes);
 r.use(adminStatsRoutes);
 r.use(adminListingsRoutes);
-
-// Placeholder - will add more admin routes
+r.use(adminOrdersRoutes);
 export default r;

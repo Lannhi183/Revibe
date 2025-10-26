@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Cart } from "../models/Cart.js";
 import { Order } from "../models/Order.js";
 import { Payment } from "../models/Payment.js";
+import { Listing } from "../models/Listing.js";
 import { coerceToObjectId, coerceArrayToObjectId } from "../utils/idCoerce.js";
 
 function calcAmounts(items, isQuick = false) {
@@ -99,6 +100,15 @@ export async function createOrderFromCart({
     (it) => !selectedKeySet.has(String(it._id || it.id || it.listing_id))
   );
   await cart.save();
+
+  // 7) Mark listings as sold
+  const listingIdsToMarkSold = itemsForOrder.map((it) => it.listing_id).filter(Boolean);
+  if (listingIdsToMarkSold.length > 0) {
+    await Listing.updateMany(
+      { _id: { $in: listingIdsToMarkSold } },
+      { $set: { status: "sold" } }
+    );
+  }
 
   return { order, payment };
 }

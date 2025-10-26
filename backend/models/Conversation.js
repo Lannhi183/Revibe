@@ -1,7 +1,7 @@
 import { Schema, model, baseOpts } from './_helpers.js';
 
 const ConversationSchema = new Schema({
-  participants: [{ type: Schema.Types.ObjectId, ref: 'User'}],
+  participants: [{ type: Schema.Types.ObjectId, ref: 'User', index: true, required: true }],
   listing_ids: [{ type: Schema.Types.ObjectId, ref: 'Listing' }],
   last_message: { text: String, at: Date },
   // Unread counts keyed by participant index (0: participants[0], 1: participants[1])

@@ -82,6 +82,8 @@ const OrderSchema = new Schema(
     shipping_address: { type: Schema.Types.Mixed },
     payment_method: { type: String, enum: ["online", "cod"], required: true },
     notes: String,
+    // Admin payout confirmation
+    admin_paid_confirmed: { type: Boolean, default: false },
     history: { type: [OrderHistoryItem], default: [] },
   },
   baseOpts

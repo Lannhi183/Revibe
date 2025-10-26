@@ -143,8 +143,8 @@ r.post('/register', async (req, res) => {
 
   await sendMail({
     to: email,
-    subject: 'ReVibe verify email',
-    html: `<p>Mã xác minh của bạn là: <b>${otp}</b> (hết hạn sau ${Math.round(
+    subject: 'ReVibe — Xác minh email',
+    html: `<p>Mã xác minh của bạn: <b>${otp}</b> (hết hạn sau ${Math.round(
       OTP_TTL_MS / 60000
     )} phút).</p>`,
   });
@@ -266,7 +266,7 @@ r.post('/request-otp', otpLimiter, async (req, res) => {
 
   await sendMail({
     to: email,
-    subject: subjects[purpose] || `ReVibe OTP code (${purpose})`,
+    subject: subjects[purpose] || `ReVibe — Mã OTP (${purpose})`,
     html: `<p>${messages[purpose] || 'Mã OTP'}: <b>${otp}</b> (hết hạn sau ${Math.round(OTP_TTL_MS / 60000)} phút).</p>`,
   });
 
@@ -403,7 +403,7 @@ r.put('/profile', requireAuth, async (req, res) => {
 
       await sendMail({
         to: emailTrimmed,
-        subject: 'ReVibe verify new email',
+        subject: 'ReVibe — Xác minh email mới',
         html: `<p>Email của bạn đã được thay đổi. Mã xác minh mới: <b>${otp}</b> (hết hạn sau ${Math.round(
           OTP_TTL_MS / 60000
         )} phút).</p>`,

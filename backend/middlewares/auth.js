@@ -21,6 +21,27 @@ catch (error) {
 }
 }
 
+// Optional auth - sets req.user if valid token provided, but doesn't require it
+export function optionalAuth(req, res, next) {
+  const h = req.headers.authorization || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : null;
+  
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const decoded = verifyAccess(token);
+    req.user = { ...decoded, id: decoded.sub }; // Add id field for convenience
+    next();
+  } catch (error) {
+    // If token is invalid, just proceed without user (don't throw error)
+    req.user = null;
+    next();
+  }
+}
+
 export function requireRole(role) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: "Unauthenticated" });
